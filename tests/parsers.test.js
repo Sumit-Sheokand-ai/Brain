@@ -7,29 +7,29 @@ import { detectAndParse } from '../src/parsers/index.js'
 
 const claudeRaw = [
   {
-    uuid: 'abc',
-    created_at: '2026-01-01T00:00:00Z',
+    uuid: "abc",
+    created_at: "2026-01-01T00:00:00Z",
     chat_messages: [
-      { sender: 'human', text: 'What is Supabase?', created_at: '2026-01-01T00:00:01Z' },
-      { sender: 'assistant', text: 'Supabase is an open-source Firebase alternative.', created_at: '2026-01-01T00:00:02Z' }
+      { sender: "human", text: "What is Supabase?", created_at: "2026-01-01T00:00:01Z" },
+      { sender: "assistant", text: "Supabase is an open-source Firebase alternative.", created_at: "2026-01-01T00:00:02Z" }
     ]
   }
 ]
 
 const chatgptRaw = {
-  title: 'Test',
+  title: "Test",
   mapping: {
-    node1: { message: { author: { role: 'user' }, content: { parts: ['Hello'] }, create_time: 1700000000 }, children: ['node2'] },
-    node2: { message: { author: { role: 'assistant' }, content: { parts: ['Hi there!'] }, create_time: 1700000001 }, children: [] }
+    "node1": { message: { author: { role: "user" }, content: { parts: ["Hello"] }, create_time: 1700000000 }, children: ["node2"] },
+    "node2": { message: { author: { role: "assistant" }, content: { parts: ["Hi there!"] }, create_time: 1700000001 }, children: [] }
   }
 }
 
 const geminiRaw = [
   {
-    title: 'Test',
+    title: "Test",
     messages: [
-      { author: 'user', content: 'What is Gemini?', timestamp: '2026-01-01T00:00:00Z' },
-      { author: 'model', content: 'I am Gemini.', timestamp: '2026-01-01T00:00:01Z' }
+      { author: "user", content: "What is Gemini?", timestamp: "2026-01-01T00:00:00Z" },
+      { author: "model", content: "I am Gemini.", timestamp: "2026-01-01T00:00:01Z" }
     ]
   }
 ]
@@ -72,9 +72,11 @@ describe('Generic parser', () => {
 
 describe('detectAndParse', () => {
   it('detects claude format', () => {
-    expect(detectAndParse(claudeRaw).source).toBe('claude')
+    const result = detectAndParse(claudeRaw)
+    expect(result.source).toBe('claude')
   })
   it('detects chatgpt format', () => {
-    expect(detectAndParse(chatgptRaw).source).toBe('chatgpt')
+    const result = detectAndParse(chatgptRaw)
+    expect(result.source).toBe('chatgpt')
   })
 })

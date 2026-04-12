@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧠 BRAIN — Knowledge Graph</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d0f14;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+  }
+  #app { width: 100vw; height: 100vh; position: relative; }
+  svg { width: 100%; height: 100%; }
+  .panel {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  #header-panel {
+    position: absolute; top: 20px; left: 20px;
+    width: 280px; z-index: 10;
+  }
+  #header-panel h1 {
+    font-size: 18px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  #header-panel .stats { font-size: 12px; color: #94a3b8; line-height: 1.8; }
+  #tooltip {
+    position: absolute; pointer-events: none; opacity: 0;
+    transition: opacity 0.2s ease; max-width: 240px; z-index: 20; font-size: 12px;
+  }
+  #tooltip h3 { font-size: 13px; margin-bottom: 6px; }
+  #tooltip .type-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 10px; margin-bottom: 8px;
+  }
+  #controls {
+    position: absolute; bottom: 20px; left: 20px;
+    display: flex; gap: 8px; z-index: 10;
+  }
+  .btn {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px; color: #94a3b8; padding: 6px 14px; font-size: 11px;
+    cursor: pointer; transition: all 0.2s ease; font-family: inherit;
+  }
+  .btn:hover { background: rgba(255,255,255,0.12); color: #e2e8f0; }
+  .btn.active { background: rgba(96,165,250,0.2); border-color: #60a5fa; color: #60a5fa; }
+  #search-box {
+    position: absolute; top: 20px; right: 20px;
+    z-index: 10; display: flex; align-items: center; gap: 8px;
+  }
+  #search-input {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; color: #e2e8f0; padding: 8px 14px;
+    font-family: inherit; font-size: 12px; outline: none; width: 200px;
+    transition: border-color 0.2s;
+  }
+  #search-input:focus { border-color: #60a5fa; }
+  #search-input::placeholder { color: #475569; }
+  .legend {
+    position: absolute; bottom: 20px; right: 20px;
+    z-index: 10; display: flex; flex-direction: column; gap: 6px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .node circle {
+    stroke-width: 2; transition: r 0.3s ease, filter 0.3s ease; cursor: pointer;
+  }
+  .node circle:hover { filter: brightness(1.4); }
+  .node text {
+    fill: #cbd5e1; font-size: 11px; pointer-events: none;
+    text-shadow: 0 0 8px rgba(0,0,0,0.8);
+  }
+  .link { stroke: rgba(255,255,255,0.1); stroke-width: 1; fill: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header-panel" class="panel">
+    <h1>🧠 BRAIN</h1>
+    <div class="stats" id="stats">Loading graph...</div>
+  </div>
+  <div id="search-box">
+    <input id="search-input" type="text" placeholder="Search nodes..." />
+  </div>
+  <div id="controls">
+    <button class="btn active" id="btn-all">All</button>
+    <button class="btn" id="btn-projects">Projects</button>
+    <button class="btn" id="btn-concepts">Concepts</button>
+    <button class="btn" id="btn-decisions">Decisions</button>
+  </div>
+  <div class="legend panel">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></div>Project</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7"></div>Concept</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e"></div>Person</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></div>Decision</div>
+  </div>
+  <div id="tooltip" class="panel">
+    <h3 id="tt-name"></h3>
+    <span id="tt-type" class="type-badge"></span>
+    <div id="tt-facts"></div>
+  </div>
+  <svg id="graph-svg"></svg>
+</div>
+<script>
+const NODE_COLORS = {
+  project:  '#3b82f6',
+  concept:  '#a855f7',
+  person:   '#22c55e',
+  decision: '#f59e0b'
+}
+
+async function loadGraph() {
+  let graphData
+  try {
+    const res = await fetch('./graph.json')
+    graphData = await res.json()
+  } catch {
+    graphData = { nodes: [], links: [] }
+  }
+
+  if (!graphData.nodes.length) {
+    graphData = {
+      nodes: [
+        { id: 'demo-project', name: 'YourProject', type: 'project', facts: ['uses Supabase', 'Next.js app'] },
+        { id: 'supabase', name: 'Supabase', type: 'concept', facts: ['used for auth and DB'] },
+        { id: 'next-js', name: 'Next.js', type: 'concept', facts: ['app router'] },
+        { id: 'decision-1', name: 'Use Prisma ORM', type: 'decision', facts: [] }
+      ],
+      links: [
+        { source: 'demo-project', target: 'supabase', label: 'uses' },
+        { source: 'demo-project', target: 'next-js', label: 'built with' },
+        { source: 'demo-project', target: 'decision-1', label: 'decided' }
+      ]
+    }
+  }
+
+  renderGraph(graphData)
+}
+
+function renderGraph(data) {
+  const svg = d3.select('#graph-svg')
+  const width = window.innerWidth
+  const height = window.innerHeight
+
+  document.getElementById('stats').innerHTML =
+    `Nodes: ${data.nodes.length} &nbsp;|&nbsp; Links: ${data.links.length}<br>` +
+    `Projects: ${data.nodes.filter(n=>n.type==='project').length} &nbsp;` +
+    `Concepts: ${data.nodes.filter(n=>n.type==='concept').length}`
+
+  const simulation = d3.forceSimulation(data.nodes)
+    .force('link', d3.forceLink(data.links).id(d => d.id).distance(120))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide(40))
+
+  const g = svg.append('g')
+
+  svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', e => g.attr('transform', e.transform)))
+
+  const link = g.append('g').selectAll('path')
+    .data(data.links).join('path')
+    .attr('class', 'link')
+    .attr('stroke-dasharray', '4 3')
+
+  const node = g.append('g').selectAll('g')
+    .data(data.nodes).join('g')
+    .attr('class', 'node')
+    .call(d3.drag()
+      .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
+      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y })
+      .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null })
+    )
+
+  node.append('circle')
+    .attr('r', d => d.type === 'project' ? 20 : 14)
+    .attr('fill', d => NODE_COLORS[d.type] || '#64748b')
+    .attr('fill-opacity', 0.8)
+    .attr('stroke', d => NODE_COLORS[d.type] || '#64748b')
+    .style('filter', d => `drop-shadow(0 0 8px ${NODE_COLORS[d.type] || '#64748b'})`)
+    .on('mouseover', (e, d) => showTooltip(e, d))
+    .on('mouseout', hideTooltip)
+
+  node.append('text')
+    .text(d => d.name)
+    .attr('x', 0).attr('y', d => (d.type === 'project' ? 20 : 14) + 14)
+    .attr('text-anchor', 'middle')
+
+  simulation.on('tick', () => {
+    link.attr('d', d => {
+      const dx = d.target.x - d.source.x
+      const dy = d.target.y - d.source.y
+      const dr = Math.sqrt(dx * dx + dy * dy) * 1.5
+      return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`
+    })
+    node.attr('transform', d => `translate(${d.x},${d.y})`)
+  })
+
+  document.getElementById('search-input').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase()
+    node.selectAll('circle').attr('fill-opacity', d =>
+      q === '' || d.name.toLowerCase().includes(q) ? 0.8 : 0.1)
+    node.selectAll('text').attr('opacity', d =>
+      q === '' || d.name.toLowerCase().includes(q) ? 1 : 0.15)
+  })
+
+  const filterBtns = { all: null, projects: 'project', concepts: 'concept', decisions: 'decision' }
+  for (const [btnId, type] of Object.entries(filterBtns)) {
+    document.getElementById(`btn-${btnId}`)?.addEventListener('click', function() {
+      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'))
+      this.classList.add('active')
+      node.attr('opacity', d => !type || d.type === type ? 1 : 0.1)
+      link.attr('opacity', d => !type || d.source.type === type || d.target.type === type ? 0.6 : 0.05)
+    })
+  }
+}
+
+function showTooltip(event, d) {
+  const tt = document.getElementById('tooltip')
+  document.getElementById('tt-name').textContent = d.name
+  const typeBadge = document.getElementById('tt-type')
+  typeBadge.textContent = d.type
+  typeBadge.style.background = (NODE_COLORS[d.type] || '#64748b') + '33'
+  typeBadge.style.color = NODE_COLORS[d.type] || '#64748b'
+  typeBadge.style.border = `1px solid ${NODE_COLORS[d.type] || '#64748b'}55`
+  document.getElementById('tt-facts').innerHTML = (d.facts || []).map(f => `<div style="color:#94a3b8;margin-top:4px">· ${f}</div>`).join('')
+  tt.style.opacity = '1'
+  tt.style.left = (event.pageX + 16) + 'px'
+  tt.style.top = (event.pageY - 10) + 'px'
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.opacity = '0'
+}
+
+loadGraph()
+</script>
+</body>
+</html>
