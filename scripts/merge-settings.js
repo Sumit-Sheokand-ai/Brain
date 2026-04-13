@@ -26,7 +26,7 @@ if (!hasStop) existing.hooks.Stop.push({ hooks: [stopHook] })
 // Merge extraKnownMarketplaces
 if (!existing.extraKnownMarketplaces) existing.extraKnownMarketplaces = {}
 existing.extraKnownMarketplaces['brain-skill'] = {
-  source: { source: 'directory', path: join(homedir(), '.claude', 'skills', 'brain').replace(/\//g, '\\') }
+  source: { source: 'directory', path: join(homedir(), '.claude', 'plugins', 'brain').replace(/\//g, '\\') }
 }
 
 // Merge enabledPlugins
