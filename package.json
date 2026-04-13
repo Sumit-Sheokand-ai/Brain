@@ -1,7 +1,11 @@
 {
-  "name": "@brain/cli",
+  "name": "brain-cli",
   "version": "1.0.0",
   "description": "Visual Brain — JARVIS-style knowledge graph for Claude Code",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sumit-Sheokand-ai/Brain"
+  },
   "type": "module",
   "bin": {
     "brain": "./bin/brain.js"
