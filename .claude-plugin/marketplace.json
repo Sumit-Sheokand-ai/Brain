@@ -1,0 +1,19 @@
+{
+  "name": "brain-skill",
+  "id": "brain-skill",
+  "owner": { "name": "Visual Brain" },
+  "metadata": {
+    "description": "JARVIS knowledge graph for Claude Code",
+    "version": "1.0.0"
+  },
+  "plugins": [{
+    "name": "brain",
+    "source": "./",
+    "description": "Visual Brain — persistent knowledge graph with JARVIS-style interface",
+    "version": "1.0.0",
+    "author": { "name": "Sumit Sheokand" },
+    "keywords": ["brain", "memory", "knowledge", "graph", "jarvis"],
+    "category": "productivity",
+    "strict": false
+  }]
+}

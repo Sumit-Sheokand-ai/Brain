@@ -1,0 +1,9 @@
+{
+  "name": "brain",
+  "description": "JARVIS knowledge graph. Triggers on /brain commands and at session start.",
+  "version": "1.0.0",
+  "author": { "name": "Sumit Sheokand" },
+  "license": "MIT",
+  "keywords": ["brain", "memory", "knowledge"],
+  "skills": ["./.claude/skills/brain"]
+}
