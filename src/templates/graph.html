@@ -3,247 +3,645 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧠 BRAIN — Knowledge Graph</title>
+<title>BRAIN — Knowledge Graph</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #0d0f14;
-    color: #e2e8f0;
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    overflow: hidden;
-    width: 100vw; height: 100vh;
-  }
-  #app { width: 100vw; height: 100vh; position: relative; }
-  svg { width: 100%; height: 100%; }
-  .panel {
-    background: rgba(255,255,255,0.04);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
-    padding: 16px;
-  }
-  #header-panel {
-    position: absolute; top: 20px; left: 20px;
-    width: 280px; z-index: 10;
-  }
-  #header-panel h1 {
-    font-size: 18px;
-    background: linear-gradient(135deg, #60a5fa, #a78bfa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 8px;
-  }
-  #header-panel .stats { font-size: 12px; color: #94a3b8; line-height: 1.8; }
-  #tooltip {
-    position: absolute; pointer-events: none; opacity: 0;
-    transition: opacity 0.2s ease; max-width: 240px; z-index: 20; font-size: 12px;
-  }
-  #tooltip h3 { font-size: 13px; margin-bottom: 6px; }
-  #tooltip .type-badge {
-    display: inline-block; padding: 2px 8px; border-radius: 20px;
-    font-size: 10px; margin-bottom: 8px;
-  }
-  #controls {
-    position: absolute; bottom: 20px; left: 20px;
-    display: flex; gap: 8px; z-index: 10;
-  }
-  .btn {
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 6px; color: #94a3b8; padding: 6px 14px; font-size: 11px;
-    cursor: pointer; transition: all 0.2s ease; font-family: inherit;
-  }
-  .btn:hover { background: rgba(255,255,255,0.12); color: #e2e8f0; }
-  .btn.active { background: rgba(96,165,250,0.2); border-color: #60a5fa; color: #60a5fa; }
-  #search-box {
-    position: absolute; top: 20px; right: 20px;
-    z-index: 10; display: flex; align-items: center; gap: 8px;
-  }
-  #search-input {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px; color: #e2e8f0; padding: 8px 14px;
-    font-family: inherit; font-size: 12px; outline: none; width: 200px;
-    transition: border-color 0.2s;
-  }
-  #search-input:focus { border-color: #60a5fa; }
-  #search-input::placeholder { color: #475569; }
-  .legend {
-    position: absolute; bottom: 20px; right: 20px;
-    z-index: 10; display: flex; flex-direction: column; gap: 6px;
-  }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .node circle {
-    stroke-width: 2; transition: r 0.3s ease, filter 0.3s ease; cursor: pointer;
-  }
-  .node circle:hover { filter: brightness(1.4); }
-  .node text {
-    fill: #cbd5e1; font-size: 11px; pointer-events: none;
-    text-shadow: 0 0 8px rgba(0,0,0,0.8);
-  }
-  .link { stroke: rgba(255,255,255,0.1); stroke-width: 1; fill: none; }
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #060810;
+  --grid:      rgba(255,255,255,0.028);
+  --glass:     rgba(12,15,26,0.82);
+  --glass2:    rgba(18,22,36,0.9);
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.13);
+  --text:      #f1f5f9;
+  --text2:     #94a3b8;
+  --text3:     #475569;
+  --blue:      #3b82f6;
+  --purple:    #a855f7;
+  --green:     #22c55e;
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+}
+
+html, body {
+  width: 100vw; height: 100vh; overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── dot-grid bg ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(59,130,246,0.05) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 40% at 75% 70%, rgba(168,85,247,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+#app { position: relative; width: 100vw; height: 100vh; z-index: 1; }
+
+svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  cursor: default;
+}
+
+/* ── glass util ── */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* ── header ── */
+#hdr {
+  position: absolute; top: 18px; left: 18px;
+  padding: 14px 18px; z-index: 20; min-width: 200px;
+}
+.hdr-brand {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+}
+.hdr-icon {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  box-shadow: 0 0 0 1px rgba(124,58,237,0.4), 0 4px 14px rgba(37,99,235,0.4);
+}
+.hdr-title {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #93c5fd 0%, #c4b5fd 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hdr-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.08em; margin-top: 1px; }
+.stat { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-top: 1px solid var(--border); }
+.stat:first-child { border-top: none; }
+.stat-k { font-size: 10.5px; color: var(--text2); }
+.stat-v { font-size: 10.5px; font-family: 'JetBrains Mono', monospace; color: var(--text); font-weight: 500; }
+
+/* ── search ── */
+#srch {
+  position: absolute; top: 18px;
+  left: 50%; transform: translateX(-50%);
+  z-index: 20; width: 260px;
+}
+.srch-inner {
+  position: relative; display: flex; align-items: center;
+}
+.srch-ic {
+  position: absolute; left: 11px;
+  color: var(--text3); font-size: 13px; pointer-events: none;
+  font-style: normal;
+}
+#srch-in {
+  width: 100%; padding: 9px 12px 9px 33px;
+  background: var(--glass2); backdrop-filter: blur(24px);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-family: inherit; font-size: 12px; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#srch-in:focus { border-color: rgba(59,130,246,0.45); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+#srch-in::placeholder { color: var(--text3); }
+
+/* ── filters ── */
+#filters {
+  position: absolute; bottom: 20px; left: 18px;
+  display: flex; gap: 5px; z-index: 20;
+}
+.fb {
+  padding: 6px 13px; border-radius: 8px; font-size: 11px; font-weight: 500;
+  background: var(--glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--border); color: var(--text2);
+  cursor: pointer; font-family: inherit; letter-spacing: 0.02em;
+  transition: all 0.18s ease;
+}
+.fb:hover { border-color: var(--border2); color: var(--text); }
+.fb.on { color: #93c5fd; border-color: rgba(59,130,246,0.45); background: rgba(59,130,246,0.1); box-shadow: 0 0 10px rgba(59,130,246,0.1); }
+
+/* ── legend ── */
+#legend {
+  position: absolute; bottom: 20px; right: 20px;
+  z-index: 20; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.li { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--text2); }
+.ld {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* ── info panel ── */
+#info {
+  position: absolute; top: 18px; right: 18px;
+  width: 260px; z-index: 20; padding: 0;
+  transform: translateX(290px);
+  transition: transform 0.28s cubic-bezier(0.22,1,0.36,1);
+  pointer-events: none;
+}
+#info.open { transform: translateX(0); pointer-events: all; }
+.info-head {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.info-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.info-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase; margin-top: 6px;
+}
+.info-close {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  color: var(--text2); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.info-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+.info-body { padding: 14px 18px; }
+.info-section-label {
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3); margin-bottom: 8px;
+}
+.info-fact {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 11.5px; color: var(--text2); line-height: 1.45;
+}
+.info-fact:last-child { border-bottom: none; }
+.info-fact-dot {
+  width: 5px; height: 5px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+}
+.info-connections { padding: 0 18px 16px; }
+.info-conn-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 6px; font-size: 10.5px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  color: var(--text2); margin: 3px 3px 0 0;
+}
+.info-conn-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.info-empty { font-size: 11px; color: var(--text3); font-style: italic; }
+
+/* ── zoom btns ── */
+#zoom-bar {
+  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 4px; z-index: 20;
+}
+.zb {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--border); color: var(--text2);
+  font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; font-family: 'JetBrains Mono', monospace;
+}
+.zb:hover { background: rgba(255,255,255,0.07); color: var(--text); border-color: var(--border2); }
+
+/* ── SVG styles ── */
+.edges-shadow path { fill: none; stroke-linecap: round; pointer-events: none; }
+.edges-main  path { fill: none; stroke-linecap: round; pointer-events: none; }
+
+.node-halo  { pointer-events: none; }
+.node-glow  { pointer-events: none; }
+.node-core  { pointer-events: none; }
+.node-shine { pointer-events: none; }
+.node-label { pointer-events: none; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 500; }
+.node-hit   { fill: transparent; cursor: grab; }
+.node-hit:active { cursor: grabbing; }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="header-panel" class="panel">
-    <h1>🧠 BRAIN</h1>
-    <div class="stats" id="stats">Loading graph...</div>
+
+  <!-- header -->
+  <div id="hdr" class="glass">
+    <div class="hdr-brand">
+      <div class="hdr-icon">🧠</div>
+      <div>
+        <div class="hdr-title">Brain</div>
+        <div class="hdr-sub">Knowledge Graph</div>
+      </div>
+    </div>
+    <div id="stats"></div>
   </div>
-  <div id="search-box">
-    <input id="search-input" type="text" placeholder="Search nodes..." />
+
+  <!-- search -->
+  <div id="srch" class="glass" style="padding:0">
+    <div class="srch-inner" style="padding:4px 6px">
+      <i class="srch-ic">⌕</i>
+      <input id="srch-in" placeholder="Search…" autocomplete="off" spellcheck="false"/>
+    </div>
   </div>
-  <div id="controls">
-    <button class="btn active" id="btn-all">All</button>
-    <button class="btn" id="btn-projects">Projects</button>
-    <button class="btn" id="btn-concepts">Concepts</button>
-    <button class="btn" id="btn-decisions">Decisions</button>
+
+  <!-- zoom -->
+  <div id="zoom-bar">
+    <button class="zb" id="zin">+</button>
+    <button class="zb" id="zrst" style="font-size:9px">fit</button>
+    <button class="zb" id="zout">−</button>
   </div>
-  <div class="legend panel">
-    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;box-shadow:0 0 6px #3b82f6"></div>Project</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7"></div>Concept</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#22c55e;box-shadow:0 0 6px #22c55e"></div>Person</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;box-shadow:0 0 6px #f59e0b"></div>Decision</div>
+
+  <!-- filters -->
+  <div id="filters">
+    <button class="fb on"  id="fa">All</button>
+    <button class="fb" id="fp">Projects</button>
+    <button class="fb" id="fc">Concepts</button>
+    <button class="fb" id="fd">Decisions</button>
+    <button class="fb" id="fpe">People</button>
   </div>
-  <div id="tooltip" class="panel">
-    <h3 id="tt-name"></h3>
-    <span id="tt-type" class="type-badge"></span>
-    <div id="tt-facts"></div>
+
+  <!-- legend -->
+  <div id="legend" class="glass">
+    <div class="li"><div class="ld" style="background:#3b82f6;color:#3b82f6"></div>Project</div>
+    <div class="li"><div class="ld" style="background:#a855f7;color:#a855f7"></div>Concept</div>
+    <div class="li"><div class="ld" style="background:#22c55e;color:#22c55e"></div>Person</div>
+    <div class="li"><div class="ld" style="background:#f59e0b;color:#f59e0b"></div>Decision</div>
   </div>
-  <svg id="graph-svg"></svg>
+
+  <!-- info panel -->
+  <div id="info" class="glass">
+    <div class="info-head">
+      <div>
+        <div class="info-name" id="info-name">—</div>
+        <div class="info-badge" id="info-badge"></div>
+      </div>
+      <button class="info-close" id="info-close">✕</button>
+    </div>
+    <div class="info-body" id="info-body"></div>
+    <div class="info-connections" id="info-conn"></div>
+  </div>
+
+  <!-- svg -->
+  <svg id="g-svg">
+    <defs>
+      <!-- per-type glow filters -->
+      <filter id="f-blue"   x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="5" result="b"/>
+        <feFlood flood-color="#3b82f6" flood-opacity="0.7" result="c"/>
+        <feComposite in="c" in2="b" operator="in" result="s"/>
+        <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="f-purple" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="5" result="b"/>
+        <feFlood flood-color="#a855f7" flood-opacity="0.7" result="c"/>
+        <feComposite in="c" in2="b" operator="in" result="s"/>
+        <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="f-green"  x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="5" result="b"/>
+        <feFlood flood-color="#22c55e" flood-opacity="0.7" result="c"/>
+        <feComposite in="c" in2="b" operator="in" result="s"/>
+        <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="f-amber"  x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="5" result="b"/>
+        <feFlood flood-color="#f59e0b" flood-opacity="0.7" result="c"/>
+        <feComposite in="c" in2="b" operator="in" result="s"/>
+        <feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <!-- radial gradients for node cores -->
+      <radialGradient id="rg-blue"   cx="38%" cy="32%" r="65%"><stop offset="0%" stop-color="#bfdbfe"/><stop offset="100%" stop-color="#1e40af"/></radialGradient>
+      <radialGradient id="rg-purple" cx="38%" cy="32%" r="65%"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="100%" stop-color="#6b21a8"/></radialGradient>
+      <radialGradient id="rg-green"  cx="38%" cy="32%" r="65%"><stop offset="0%" stop-color="#bbf7d0"/><stop offset="100%" stop-color="#14532d"/></radialGradient>
+      <radialGradient id="rg-amber"  cx="38%" cy="32%" r="65%"><stop offset="0%" stop-color="#fef08a"/><stop offset="100%" stop-color="#78350f"/></radialGradient>
+      <!-- edge gradient -->
+      <linearGradient id="eg" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%"   stop-color="rgba(148,163,184,0)"/>
+        <stop offset="50%"  stop-color="rgba(148,163,184,0.25)"/>
+        <stop offset="100%" stop-color="rgba(148,163,184,0)"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
 </div>
 <script>
-const NODE_COLORS = {
-  project:  '#3b82f6',
-  concept:  '#a855f7',
-  person:   '#22c55e',
-  decision: '#f59e0b'
+/* ═══════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════ */
+const C = {
+  color:  { project:'#3b82f6', concept:'#a855f7', person:'#22c55e', decision:'#f59e0b' },
+  grad:   { project:'url(#rg-blue)', concept:'url(#rg-purple)', person:'url(#rg-green)', decision:'url(#rg-amber)' },
+  filter: { project:'url(#f-blue)',  concept:'url(#f-purple)',  person:'url(#f-green)',  decision:'url(#f-amber)' },
+  r: d => d.type === 'project' ? 10 + Math.min((d._lc||0)*1.2, 6) : 7 + Math.min((d._lc||0)*0.8, 4),
 }
 
-async function loadGraph() {
-  let graphData
-  try {
-    const res = await fetch('./graph.json')
-    graphData = await res.json()
-  } catch {
-    graphData = { nodes: [], links: [] }
+/* ═══════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════ */
+async function load() {
+  let d
+  try { const r = await fetch('./graph.json'); d = await r.json() } catch { d = {nodes:[],links:[]} }
+  if (!d.nodes?.length) d = demo()
+  const lc = {}
+  for (const l of d.links) {
+    const s = l.source?.id ?? l.source, t = l.target?.id ?? l.target
+    lc[s] = (lc[s]||0)+1; lc[t] = (lc[t]||0)+1
   }
-
-  if (!graphData.nodes.length) {
-    graphData = {
-      nodes: [
-        { id: 'demo-project', name: 'YourProject', type: 'project', facts: ['uses Supabase', 'Next.js app'] },
-        { id: 'supabase', name: 'Supabase', type: 'concept', facts: ['used for auth and DB'] },
-        { id: 'next-js', name: 'Next.js', type: 'concept', facts: ['app router'] },
-        { id: 'decision-1', name: 'Use Prisma ORM', type: 'decision', facts: [] }
-      ],
-      links: [
-        { source: 'demo-project', target: 'supabase', label: 'uses' },
-        { source: 'demo-project', target: 'next-js', label: 'built with' },
-        { source: 'demo-project', target: 'decision-1', label: 'decided' }
-      ]
-    }
-  }
-
-  renderGraph(graphData)
+  d.nodes.forEach(n => n._lc = lc[n.id]||0)
+  return d
 }
 
-function renderGraph(data) {
-  const svg = d3.select('#graph-svg')
-  const width = window.innerWidth
-  const height = window.innerHeight
+function demo() {
+  return {
+    nodes: [
+      { id:'brain',   name:'Brain',          type:'project',  facts:['Knowledge graph system','CLI tool: brain import/recall/graph','Auto-injects ~100 token context header'] },
+      { id:'claude',  name:'Claude Code',    type:'concept',  facts:['AI coding assistant','Used for all development','Skills system for automation'] },
+      { id:'d3',      name:'D3.js v7',       type:'concept',  facts:['Force-directed graph','SVG rendering','Zoom + drag built-in'] },
+      { id:'node',    name:'Node.js',        type:'concept',  facts:['CLI runtime','npm-linked binary'] },
+      { id:'ink',     name:'Ink (React CLI)',type:'concept',  facts:['Terminal dashboard','Cross-platform including Windows'] },
+      { id:'you',     name:'You',            type:'person',   facts:['Building Brain system','Stack: Go, Node, React'] },
+      { id:'dec-fs',  name:'File-based DB',  type:'decision', facts:['No database needed','Plain JSON + Markdown','Git-versionable'] },
+      { id:'dec-d3',  name:'D3 graph view',  type:'decision', facts:['Self-contained HTML','Opens in browser','No server required'] },
+      { id:'dec-hook',name:'Stop hook',      type:'decision', facts:['Auto-runs brain update','Extracts knowledge from session history'] },
+    ],
+    links: [
+      { source:'brain',   target:'claude',   label:'uses' },
+      { source:'brain',   target:'d3',       label:'renders with' },
+      { source:'brain',   target:'node',     label:'runs on' },
+      { source:'brain',   target:'ink',      label:'dashboard via' },
+      { source:'you',     target:'brain',    label:'building' },
+      { source:'brain',   target:'dec-fs',   label:'decided' },
+      { source:'brain',   target:'dec-d3',   label:'decided' },
+      { source:'brain',   target:'dec-hook', label:'decided' },
+      { source:'d3',      target:'dec-d3',   label:'enables' },
+      { source:'claude',  target:'you',      label:'assists' },
+    ]
+  }
+}
 
+/* ═══════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════ */
+let zoom, sim, nodeGroup, linkEl, linkGlowEl, allNodes, allLinks, selectedId = null
+
+async function main() {
+  const data = await load()
+  allNodes = data.nodes; allLinks = data.links
+
+  // stats
+  const cnt = t => data.nodes.filter(n=>n.type===t).length
   document.getElementById('stats').innerHTML =
-    `Nodes: ${data.nodes.length} &nbsp;|&nbsp; Links: ${data.links.length}<br>` +
-    `Projects: ${data.nodes.filter(n=>n.type==='project').length} &nbsp;` +
-    `Concepts: ${data.nodes.filter(n=>n.type==='concept').length}`
+    ['Nodes','Links','Projects','Concepts','Decisions']
+    .map((k,i) => `<div class="stat"><span class="stat-k">${k}</span><span class="stat-v">${
+      [data.nodes.length, data.links.length, cnt('project'), cnt('concept'), cnt('decision')][i]
+    }</span></div>`).join('')
 
-  const simulation = d3.forceSimulation(data.nodes)
-    .force('link', d3.forceLink(data.links).id(d => d.id).distance(120))
-    .force('charge', d3.forceManyBody().strength(-300))
-    .force('center', d3.forceCenter(width / 2, height / 2))
-    .force('collision', d3.forceCollide(40))
+  const svg = d3.select('#g-svg')
+  const W = () => window.innerWidth, H = () => window.innerHeight
 
-  const g = svg.append('g')
+  // simulation
+  sim = d3.forceSimulation(data.nodes)
+    .force('link',   d3.forceLink(data.links).id(d=>d.id).distance(d => (C.r(d.source)+C.r(d.target))*5.5+20))
+    .force('charge', d3.forceManyBody().strength(d => -160 - (d._lc||0)*30))
+    .force('center', d3.forceCenter(W()/2, H()/2).strength(0.06))
+    .force('collide', d3.forceCollide(d => C.r(d)+18))
+    .alphaDecay(0.018)
 
-  svg.call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', e => g.attr('transform', e.transform)))
+  const scene = svg.append('g').attr('class','scene')
 
-  const link = g.append('g').selectAll('path')
-    .data(data.links).join('path')
-    .attr('class', 'link')
+  // zoom — only fires on svg background, not on nodes
+  zoom = d3.zoom()
+    .scaleExtent([0.1, 6])
+    .filter(e => e.type === 'wheel' || e.target === svg.node())
+    .on('zoom', e => scene.attr('transform', e.transform))
+  svg.call(zoom)
+  svg.on('dblclick.zoom', null)
+  svg.on('click', (e) => { if (e.target === svg.node()) closeInfo() })
+
+  // edges
+  const eGlow = scene.append('g').attr('class','edges-shadow')
+  const eMain = scene.append('g').attr('class','edges-main')
+
+  linkGlowEl = eGlow.selectAll('path').data(data.links).join('path')
+    .attr('stroke-width', 8).attr('stroke-opacity', 0.07)
+    .attr('stroke', d => C.color[data.nodes.find(n=>n.id===(d.source?.id??d.source))?.type] || '#475569')
+
+  linkEl = eMain.selectAll('path').data(data.links).join('path')
+    .attr('stroke', 'rgba(148,163,184,0.2)')
+    .attr('stroke-width', 1)
     .attr('stroke-dasharray', '4 3')
 
-  const node = g.append('g').selectAll('g')
-    .data(data.nodes).join('g')
-    .attr('class', 'node')
-    .call(d3.drag()
-      .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y })
-      .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y })
-      .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null })
-    )
+  // nodes
+  const nG = scene.append('g').attr('class','nodes')
+  nodeGroup = nG.selectAll('g').data(data.nodes).join('g')
 
-  node.append('circle')
-    .attr('r', d => d.type === 'project' ? 20 : 14)
-    .attr('fill', d => NODE_COLORS[d.type] || '#64748b')
-    .attr('fill-opacity', 0.8)
-    .attr('stroke', d => NODE_COLORS[d.type] || '#64748b')
-    .style('filter', d => `drop-shadow(0 0 8px ${NODE_COLORS[d.type] || '#64748b'})`)
-    .on('mouseover', (e, d) => showTooltip(e, d))
-    .on('mouseout', hideTooltip)
+  // halo
+  nodeGroup.append('circle').attr('class','node-halo')
+    .attr('r', d => C.r(d)+6)
+    .attr('fill','none')
+    .attr('stroke', d => C.color[d.type]||'#475569')
+    .attr('stroke-width', 1).attr('stroke-opacity', 0.15)
 
-  node.append('text')
+  // glow backing
+  nodeGroup.append('circle').attr('class','node-glow')
+    .attr('r', d => C.r(d)+3)
+    .attr('fill', d => C.color[d.type]||'#475569')
+    .attr('fill-opacity', 0.15)
+    .attr('filter', d => C.filter[d.type])
+
+  // core
+  nodeGroup.append('circle').attr('class','node-core')
+    .attr('r', d => C.r(d))
+    .attr('fill', d => C.grad[d.type]||'#475569')
+    .attr('stroke', d => C.color[d.type]||'#475569')
+    .attr('stroke-width', 1.2).attr('stroke-opacity', 0.65)
+
+  // specular highlight
+  nodeGroup.append('circle').attr('class','node-shine')
+    .attr('r', d => C.r(d)*0.5)
+    .attr('cy', d => -C.r(d)*0.28)
+    .attr('fill','rgba(255,255,255,0.18)')
+
+  // label
+  nodeGroup.append('text').attr('class','node-label')
+    .attr('y', d => C.r(d)+12)
+    .attr('text-anchor','middle')
+    .attr('fill','rgba(226,232,240,0.9)')
     .text(d => d.name)
-    .attr('x', 0).attr('y', d => (d.type === 'project' ? 20 : 14) + 14)
-    .attr('text-anchor', 'middle')
 
-  simulation.on('tick', () => {
-    link.attr('d', d => {
-      const dx = d.target.x - d.source.x
-      const dy = d.target.y - d.source.y
-      const dr = Math.sqrt(dx * dx + dy * dy) * 1.5
-      return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`
-    })
-    node.attr('transform', d => `translate(${d.x},${d.y})`)
+  // hit area — drag + click (topmost, transparent)
+  const drag = d3.drag()
+    .on('start', (e,d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y })
+    .on('drag',  (e,d) => { d.fx=e.x; d.fy=e.y })
+    .on('end',   (e,d) => { if (!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null })
+
+  nodeGroup.append('circle').attr('class','node-hit')
+    .attr('r', d => C.r(d)+9)
+    .call(drag)
+    .on('click', (e,d) => { e.stopPropagation(); openInfo(d, data) })
+    .on('mouseover', (e,d) => hoverOn(e,d))
+    .on('mouseout',  (e,d) => hoverOff(e,d))
+
+  // tick
+  sim.on('tick', () => {
+    const curve = d => {
+      const sx=d.source.x, sy=d.source.y, tx=d.target.x, ty=d.target.y
+      const mx=(sx+tx)/2 - (ty-sy)*0.15, my=(sy+ty)/2 + (tx-sx)*0.15
+      return `M${sx},${sy}Q${mx},${my} ${tx},${ty}`
+    }
+    linkEl.attr('d', curve)
+    linkGlowEl.attr('d', curve)
+    nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`)
   })
 
-  document.getElementById('search-input').addEventListener('input', e => {
-    const q = e.target.value.toLowerCase()
-    node.selectAll('circle').attr('fill-opacity', d =>
-      q === '' || d.name.toLowerCase().includes(q) ? 0.8 : 0.1)
-    node.selectAll('text').attr('opacity', d =>
-      q === '' || d.name.toLowerCase().includes(q) ? 1 : 0.15)
+  // halo pulse
+  pulseHalos()
+
+  // controls
+  setupControls(svg, W, H)
+}
+
+/* ═══════════════════════════════════════════
+   HOVER
+═══════════════════════════════════════════ */
+function hoverOn(e, d) {
+  const g = d3.select(e.currentTarget.parentNode)
+  g.select('.node-core').transition().duration(150).attr('r', C.r(d)*1.25)
+  g.select('.node-halo').transition().duration(150).attr('stroke-opacity', 0.5).attr('r', C.r(d)+10)
+}
+function hoverOff(e, d) {
+  if (selectedId === d.id) return
+  const g = d3.select(e.currentTarget.parentNode)
+  g.select('.node-core').transition().duration(220).attr('r', C.r(d))
+  g.select('.node-halo').transition().duration(220).attr('stroke-opacity', 0.15).attr('r', C.r(d)+6)
+}
+
+/* ═══════════════════════════════════════════
+   INFO PANEL
+═══════════════════════════════════════════ */
+const TYPE_LABEL = { project:'Project', concept:'Concept', person:'Person', decision:'Decision' }
+
+function openInfo(d, data) {
+  selectedId = d.id
+  // highlight selected node
+  nodeGroup.select('.node-core').transition().duration(200)
+    .attr('r', n => n.id === d.id ? C.r(n)*1.3 : C.r(n))
+  nodeGroup.select('.node-halo').transition().duration(200)
+    .attr('stroke-opacity', n => n.id === d.id ? 0.6 : 0.15)
+    .attr('r', n => n.id === d.id ? C.r(n)+12 : C.r(n)+6)
+
+  document.getElementById('info-name').textContent = d.name
+  const badge = document.getElementById('info-badge')
+  const col = C.color[d.type]||'#64748b'
+  badge.textContent = TYPE_LABEL[d.type]||d.type
+  badge.style.cssText = `background:${col}1a;color:${col};border:1px solid ${col}44`
+
+  // facts
+  const body = document.getElementById('info-body')
+  const facts = d.facts||[]
+  if (facts.length) {
+    body.innerHTML = `<div class="info-section-label">Facts</div>` +
+      facts.map(f => `<div class="info-fact">
+        <div class="info-fact-dot" style="background:${col}"></div>
+        <span>${f}</span>
+      </div>`).join('')
+  } else {
+    body.innerHTML = `<div class="info-empty">No facts recorded yet.</div>`
+  }
+
+  // connections
+  const conn = document.getElementById('info-conn')
+  const linked = allLinks.filter(l => {
+    const s = l.source?.id??l.source, t = l.target?.id??l.target
+    return s===d.id||t===d.id
+  }).map(l => {
+    const s = l.source?.id??l.source, t = l.target?.id??l.target
+    const otherId = s===d.id ? t : s
+    const other = allNodes.find(n=>n.id===otherId)
+    return { node: other, label: l.label||'linked' }
+  }).filter(x=>x.node)
+
+  if (linked.length) {
+    conn.innerHTML = `<div class="info-section-label">Connections (${linked.length})</div>` +
+      linked.map(({node:n, label}) => {
+        const nc = C.color[n.type]||'#475569'
+        return `<span class="info-conn-chip">
+          <span class="info-conn-dot" style="background:${nc}"></span>
+          ${n.name}
+          <span style="color:var(--text3);font-size:9.5px">${label}</span>
+        </span>`
+      }).join('')
+  } else {
+    conn.innerHTML = ''
+  }
+
+  document.getElementById('info').classList.add('open')
+}
+
+function closeInfo() {
+  selectedId = null
+  document.getElementById('info').classList.remove('open')
+  nodeGroup.select('.node-core').transition().duration(200).attr('r', C.r)
+  nodeGroup.select('.node-halo').transition().duration(200).attr('stroke-opacity', 0.15).attr('r', d=>C.r(d)+6)
+}
+document.getElementById('info-close').onclick = closeInfo
+
+/* ═══════════════════════════════════════════
+   SEARCH + FILTERS
+═══════════════════════════════════════════ */
+function setupControls(svg, W, H) {
+  document.getElementById('srch-in').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase().trim()
+    nodeGroup.transition().duration(180)
+      .attr('opacity', d => !q || d.name.toLowerCase().includes(q) || (d.facts||[]).some(f=>f.toLowerCase().includes(q)) ? 1 : 0.1)
+    linkEl.transition().duration(180)
+      .attr('stroke-opacity', d => {
+        if (!q) return 0.2
+        return (d.source.name?.toLowerCase().includes(q) || d.target.name?.toLowerCase().includes(q)) ? 0.45 : 0.04
+      })
+    linkGlowEl.transition().duration(180).attr('stroke-opacity', q ? 0.02 : 0.07)
   })
 
-  const filterBtns = { all: null, projects: 'project', concepts: 'concept', decisions: 'decision' }
-  for (const [btnId, type] of Object.entries(filterBtns)) {
-    document.getElementById(`btn-${btnId}`)?.addEventListener('click', function() {
-      document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'))
-      this.classList.add('active')
-      node.attr('opacity', d => !type || d.type === type ? 1 : 0.1)
-      link.attr('opacity', d => !type || d.source.type === type || d.target.type === type ? 0.6 : 0.05)
+  const fmap = { fa:null, fp:'project', fc:'concept', fd:'decision', fpe:'person' }
+  for (const [id, type] of Object.entries(fmap)) {
+    document.getElementById(id)?.addEventListener('click', function() {
+      document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'))
+      this.classList.add('on')
+      nodeGroup.transition().duration(220).attr('opacity', d => !type||d.type===type ? 1 : 0.07)
+      linkEl.transition().duration(220)
+        .attr('stroke-opacity', d => !type||d.source.type===type||d.target.type===type ? 0.2 : 0.03)
+      linkGlowEl.transition().duration(220)
+        .attr('stroke-opacity', d => !type||d.source.type===type||d.target.type===type ? 0.07 : 0.01)
     })
   }
+
+  // zoom buttons
+  document.getElementById('zin').onclick  = () => svg.transition().duration(280).call(zoom.scaleBy, 1.5)
+  document.getElementById('zout').onclick = () => svg.transition().duration(280).call(zoom.scaleBy, 0.67)
+  document.getElementById('zrst').onclick  = () => svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(W()/2, H()/2).scale(0.9).translate(-W()/2, -H()/2))
+
+  window.addEventListener('resize', () => {
+    sim.force('center', d3.forceCenter(W()/2, H()/2).strength(0.06)).alpha(0.2).restart()
+  })
 }
 
-function showTooltip(event, d) {
-  const tt = document.getElementById('tooltip')
-  document.getElementById('tt-name').textContent = d.name
-  const typeBadge = document.getElementById('tt-type')
-  typeBadge.textContent = d.type
-  typeBadge.style.background = (NODE_COLORS[d.type] || '#64748b') + '33'
-  typeBadge.style.color = NODE_COLORS[d.type] || '#64748b'
-  typeBadge.style.border = `1px solid ${NODE_COLORS[d.type] || '#64748b'}55`
-  document.getElementById('tt-facts').innerHTML = (d.facts || []).map(f => `<div style="color:#94a3b8;margin-top:4px">· ${f}</div>`).join('')
-  tt.style.opacity = '1'
-  tt.style.left = (event.pageX + 16) + 'px'
-  tt.style.top = (event.pageY - 10) + 'px'
+/* ═══════════════════════════════════════════
+   PULSE
+═══════════════════════════════════════════ */
+function pulseHalos() {
+  if (!nodeGroup) return
+  nodeGroup.filter(d => d.id !== selectedId).selectAll('.node-halo')
+    .transition().duration(2400).ease(d3.easeSinInOut)
+    .attr('stroke-opacity', 0.38).attr('r', d => C.r(d)+10)
+    .transition().duration(2400).ease(d3.easeSinInOut)
+    .attr('stroke-opacity', 0.1).attr('r', d => C.r(d)+5)
+    .on('end', pulseHalos)
 }
 
-function hideTooltip() {
-  document.getElementById('tooltip').style.opacity = '0'
-}
-
-loadGraph()
+main()
 </script>
 </body>
 </html>
